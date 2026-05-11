@@ -1,0 +1,584 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Checklist Hulvor — Año 1</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #F5F4F0; --surface: #FFFFFF; --border: #E2E0D8;
+    --text: #1A1A18; --muted: #7A786E; --faint: #AEACA4;
+    --mono: 'DM Mono', monospace; --sans: 'DM Sans', sans-serif;
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: var(--sans); background: var(--bg); color: var(--text); min-height: 100vh; }
+
+  .site-header {
+    background: var(--text); color: #fff;
+    padding: 24px 40px 20px;
+    display: flex; align-items: flex-end; justify-content: space-between; gap: 16px;
+  }
+  .site-header h1 { font-family: var(--mono); font-size: 20px; font-weight: 500; letter-spacing: -0.02em; line-height: 1.2; }
+  .site-header p { font-size: 12px; color: #9A9890; margin-top: 3px; }
+  .global-progress { text-align: right; min-width: 140px; }
+  .global-progress .num { font-family: var(--mono); font-size: 26px; font-weight: 500; color: #fff; line-height: 1; }
+  .global-progress .lbl { font-size: 10px; color: #9A9890; margin-top: 2px; text-transform: uppercase; letter-spacing: .06em; }
+  .progress-track { height: 3px; background: #333; border-radius: 2px; margin-top: 6px; overflow: hidden; }
+  .progress-fill { height: 100%; background: #1D9E75; border-radius: 2px; transition: width .4s cubic-bezier(.4,0,.2,1); width: 0%; }
+
+  .toolbar {
+    background: var(--surface); border-bottom: 1px solid var(--border);
+    padding: 9px 40px; display: flex; align-items: center; gap: 8px; flex-wrap: wrap;
+  }
+  .tsep { width: 1px; height: 18px; background: var(--border); margin: 0 2px; flex-shrink: 0; }
+  .tlbl { font-size: 11px; color: var(--muted); font-family: var(--mono); }
+
+  .sync-status {
+    display: flex; align-items: center; gap: 6px;
+    font-family: var(--mono); font-size: 11px; color: var(--muted);
+  }
+  .sync-dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex-shrink: 0; transition: background .3s; }
+  .sync-dot.ok      { background: #1D9E75; }
+  .sync-dot.saving  { background: #BA7517; animation: pulse .7s ease-in-out infinite; }
+  .sync-dot.err     { background: #E24B4A; }
+  @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+
+  .btn {
+    font-family: var(--mono); font-size: 11px; padding: 5px 11px;
+    border: 1px solid var(--border); border-radius: 5px;
+    background: var(--bg); color: var(--text); cursor: pointer;
+    transition: background .15s, opacity .15s;
+    display: inline-flex; align-items: center; gap: 4px;
+  }
+  .btn:hover:not(:disabled) { background: var(--border); }
+  .btn:disabled { opacity: .3; cursor: not-allowed; }
+  .btn.danger { color: #A32D2D; border-color: #F09595; }
+  .btn.danger:hover:not(:disabled) { background: #FCEBEB; }
+
+  .toast {
+    position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%) translateY(10px);
+    background: var(--text); color: #fff; font-family: var(--mono); font-size: 11px;
+    padding: 7px 16px; border-radius: 6px; opacity: 0;
+    transition: opacity .2s, transform .2s; pointer-events: none; z-index: 999;
+  }
+  .toast.show { opacity: 1; transform: translateX(-50%) translateY(0); }
+
+  .loading-overlay {
+    position: fixed; inset: 0; background: rgba(245,244,240,.9);
+    display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 10px;
+    z-index: 500;
+  }
+  .spinner { width: 20px; height: 20px; border: 2px solid var(--border); border-top-color: var(--muted); border-radius: 50%; animation: spin .6s linear infinite; }
+  @keyframes spin { to { transform: rotate(360deg); } }
+  .loading-overlay span { font-family: var(--mono); font-size: 12px; color: var(--muted); }
+
+  .main { max-width: 860px; margin: 0 auto; padding: 32px 20px 64px; }
+
+  .section { margin-bottom: 20px; background: var(--surface); border: 1px solid var(--border); border-radius: 10px; overflow: hidden; }
+  .section-header {
+    display: flex; align-items: center; gap: 12px; padding: 14px 18px;
+    cursor: pointer; user-select: none; border-bottom: 1px solid var(--border); transition: background .1s;
+  }
+  .section-header:hover { background: var(--bg); }
+  .sec-accent { width: 4px; height: 28px; border-radius: 2px; flex-shrink: 0; }
+  .sec-info { flex: 1; }
+  .sec-title { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: -0.01em; }
+  .sec-subtitle { font-size: 11px; color: var(--muted); margin-top: 1px; }
+  .sec-stats { display: flex; align-items: center; gap: 8px; }
+  .sec-count { font-family: var(--mono); font-size: 11px; color: var(--muted); }
+  .mini-track { width: 48px; height: 3px; background: var(--border); border-radius: 2px; overflow: hidden; }
+  .mini-fill { height: 100%; border-radius: 2px; transition: width .3s; width: 0%; }
+  .chevron { font-size: 16px; color: var(--faint); transition: transform .2s; line-height: 1; }
+  .section.collapsed .chevron { transform: rotate(-90deg); }
+  .section-body { display: block; }
+  .section.collapsed .section-body { display: none; }
+
+  .group-label {
+    font-family: var(--mono); font-size: 10px; font-weight: 500;
+    text-transform: uppercase; letter-spacing: .1em; color: var(--faint);
+    padding: 12px 18px 5px; border-bottom: 1px solid var(--bg);
+  }
+  .item {
+    display: flex; align-items: flex-start; gap: 10px; padding: 10px 18px;
+    border-bottom: 1px solid var(--bg); transition: background .1s; cursor: pointer;
+  }
+  .item:hover { background: #FAFAF8; }
+  .item:last-child { border-bottom: none; }
+  .check-wrap {
+    width: 18px; height: 18px; border: 1.5px solid var(--border); border-radius: 5px;
+    flex-shrink: 0; margin-top: 1px; display: flex; align-items: center; justify-content: center;
+    transition: background .15s, border-color .15s;
+  }
+  .check-wrap svg { display: none; }
+  .item.done .check-wrap svg { display: block; }
+  .item.done .check-wrap { background: var(--accent, #1D9E75); border-color: var(--accent, #1D9E75); }
+  .item-body { flex: 1; min-width: 0; }
+  .item-text { font-size: 13px; color: var(--text); line-height: 1.4; transition: color .15s; }
+  .item.done .item-text { color: var(--faint); text-decoration: line-through; }
+  .item-desc { font-size: 11px; color: var(--muted); line-height: 1.5; margin-top: 2px; }
+  .item.done .item-desc { color: var(--faint); }
+  .item-note { display: none; margin-top: 5px; }
+  .item-note textarea {
+    width: 100%; font-family: var(--sans); font-size: 11px; color: var(--text);
+    background: var(--bg); border: 1px solid var(--border); border-radius: 5px;
+    padding: 6px 9px; resize: vertical; min-height: 48px; outline: none;
+    transition: border-color .15s; line-height: 1.5;
+  }
+  .item-note textarea:focus { border-color: var(--muted); }
+  .item-note textarea::placeholder { color: var(--faint); }
+  .note-btn {
+    font-size: 10px; font-family: var(--mono); color: var(--muted);
+    background: none; border: none; cursor: pointer; padding: 0; margin-top: 4px; display: block;
+  }
+  .note-btn:hover { color: var(--text); }
+  .badge { font-family: var(--mono); font-size: 10px; padding: 2px 6px; border-radius: 4px; border: 1px solid; flex-shrink: 0; margin-top: 2px; }
+  .badge.high { color: #A32D2D; border-color: #F09595; background: #FCEBEB; }
+  .badge.med  { color: #633806; border-color: #FAC775; background: #FAEEDA; }
+  .badge.low  { color: #27500A; border-color: #C0DD97; background: #EAF3DE; }
+
+  @media (max-width: 600px) {
+    .site-header { padding: 18px 20px 16px; }
+    .toolbar { padding: 8px 16px; gap: 6px; }
+    .main { padding: 20px 12px 48px; }
+  }
+</style>
+</head>
+<body>
+
+<div class="loading-overlay" id="overlay">
+  <div class="spinner"></div>
+  <span>Cargando progreso compartido...</span>
+</div>
+
+<header class="site-header">
+  <div>
+    <h1>Checklist Hulvor</h1>
+    <p>Progreso compartido en tiempo real · Año 1</p>
+  </div>
+  <div class="global-progress">
+    <div class="num" id="g-num">0%</div>
+    <div class="lbl" id="g-sub">cargando...</div>
+    <div class="progress-track"><div class="progress-fill" id="g-fill"></div></div>
+  </div>
+</header>
+
+<div class="toolbar">
+  <div class="sync-status">
+    <div class="sync-dot saving" id="sync-dot"></div>
+    <span id="sync-lbl">Conectando...</span>
+  </div>
+  <div class="tsep"></div>
+  <span class="tlbl">Historial:</span>
+  <button class="btn" id="btn-undo" onclick="undo()" disabled>
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M2.5 5.5H9C11 5.5 12.5 7 12.5 9S11 12.5 9 12.5H5.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M5 2.5L2.5 5.5L5 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+    Deshacer
+  </button>
+  <button class="btn" id="btn-redo" onclick="redo()" disabled>
+    Rehacer
+    <svg width="12" height="12" viewBox="0 0 14 14" fill="none"><path d="M11.5 5.5H5C3 5.5 1.5 7 1.5 9S3 12.5 5 12.5H8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round"/><path d="M9 2.5L11.5 5.5L9 8.5" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"/></svg>
+  </button>
+  <div class="tsep"></div>
+  <button class="btn" onclick="expandAll()">Expandir</button>
+  <button class="btn" onclick="collapseAll()">Colapsar</button>
+  <button class="btn" onclick="filterPending()">Pendientes</button>
+  <button class="btn" onclick="filterAll()">Todo</button>
+  <div class="tsep"></div>
+  <button class="btn danger" onclick="resetAll()">Reiniciar</button>
+</div>
+
+<div class="main" id="main"></div>
+<div class="toast" id="toast"></div>
+
+<script>
+/* ── CONFIG JSONBIN ── */
+const BIN_ID  = '6a022261250b1311c33621cc';
+const API_KEY = '$2a$10$XRNyAj2SxoumdJ8iPO6VyOvGy9rugGdpC0kbOLfYW6nRwyLyxU3gC';
+const BIN_URL = `https://api.jsonbin.io/v3/b/${BIN_ID}`;
+const HEADERS = {
+  'Content-Type': 'application/json',
+  'X-Master-Key': API_KEY,
+  'X-Bin-Versioning': 'false'
+};
+
+/* ── DATA ── */
+const SECTIONS = [
+  {
+    id:'legal', color:'#1D9E75', title:'Legal y estructura',
+    subtitle:'Persona moral activa · Documentos base',
+    groups:[
+      { label:'Primero que todo', items:[
+        { text:'Verificar actividades económicas del RFC', desc:'Confirmar con el SAT que el RFC incluye "comercio al por mayor de maquinaria y equipo industrial". Si no, hacer la corrección.', p:'high' },
+        { text:'Abrir cuenta bancaria empresarial', desc:'A nombre de la persona moral. Separa finanzas personales del negocio desde el primer día. BBVA, Banorte o HSBC tienen opciones PyME.', p:'high' },
+        { text:'Activar buzón tributario en el SAT', desc:'Obligatorio para recibir notificaciones y estar al corriente. Entra con la e.firma de la empresa.', p:'high' },
+        { text:'Contratar contador o servicio externo', desc:'Alguien que presente declaraciones mensuales y anuales. Puede ser por honorarios. Fundamental desde el inicio.', p:'high' },
+      ]},
+      { label:'Documentos base', items:[
+        { text:'Redactar contrato tipo de compraventa', desc:'Con cláusulas de: objeto, precio y forma de pago, plazo de entrega, garantías, penalizaciones y solución de controversias.', p:'high' },
+        { text:'Configurar facturación CFDI 4.0', desc:'Usar Aspel SAE, Contpaq o similar. Tener lista la emisión de CFDI antes de la segunda venta.', p:'high' },
+        { text:'Registrar marca "Hulvor" en el IMPI', desc:'Protege el nombre comercial. El trámite en impi.gob.mx tarda ~4 meses. Hazlo pronto para reservar la marca.', p:'med' },
+        { text:'Elaborar acuerdo de socios por escrito', desc:'Definir porcentajes, roles, qué pasa si alguien quiere salir y cómo se toman decisiones importantes.', p:'med' },
+      ]},
+    ]
+  },
+  {
+    id:'precios', color:'#378ADD', title:'Catálogo y precios',
+    subtitle:'7 modelos activos · Herramienta y fichas',
+    groups:[
+      { label:'Herramienta de precios', items:[
+        { text:'Terminar herramienta HTML de precios', desc:'Con los 7 modelos (J25, JX45 ×2, JB50T, JX60T, JB85T, JS20), EXW editable por máquina, tipo de cambio y precio en MXN.', p:'high' },
+        { text:'Definir política de márgenes mínimos', desc:'Margen mínimo por canal: venta directa, distribuidor/revendedor y licitación pública. No negociar por debajo del piso.', p:'high' },
+        { text:'Agregar columna de precio con IVA', desc:'El cliente siempre pregunta el precio final. La herramienta debe mostrar precio sin y con IVA automáticamente.', p:'med' },
+        { text:'Definir condiciones de pago estándar', desc:'Ejemplo: 50% anticipo + 50% contra entrega. O crédito a 30 días para clientes con historial. Documentarlo.', p:'med' },
+        { text:'Solicitar cotización de distintos modelos al proveedor', desc:'Pedir precios actualizados de todos los modelos para comparativa interna. Sirve para verificar márgenes reales y detectar cuáles máquinas son más competitivas.', p:'high' },
+      ]},
+      { label:'Material de catálogo', items:[
+        { text:'Crear ficha técnica por cada modelo', desc:'1 página por máquina: foto, aplicaciones ideales, dimensiones, capacidad de tanque, autonomía, consumo y precio referencia.', p:'high' },
+        { text:'Traducir fichas al español si están en inglés', desc:'Fichas en español generan más confianza con clientes industriales en México.', p:'med' },
+        { text:'Armar catálogo general en PDF', desc:'Todos los modelos ordenados por tamaño/aplicación. Para enviar por WhatsApp o correo a prospectos.', p:'med' },
+        { text:'Definir accesorios y consumibles disponibles', desc:'Cepillos, discos, detergentes, refacciones. Es ingreso recurrente y fideliza al cliente.', p:'low' },
+      ]},
+    ]
+  },
+  {
+    id:'ventas', color:'#BA7517', title:'Proceso de ventas',
+    subtitle:'Embudo documentado · Cierre y postventa',
+    groups:[
+      { label:'Documentar el proceso', items:[
+        { text:'Mapear las etapas del embudo de ventas', desc:'Prospecto → Contacto → Demo → Cotización → Negociación → Cierre → Entrega → Postventa. Definir qué acción avanza cada etapa.', p:'high' },
+        { text:'Crear formato de cotización profesional', desc:'Con logo, datos fiscales, descripción, precio unitario, IVA, total, validez (15-30 días), condiciones y firma.', p:'high' },
+        { text:'Escribir guía de preguntas de descubrimiento', desc:'Las 5-7 preguntas antes de cotizar: ¿qué superficie?, ¿cuántos m²?, ¿turno de trabajo?, ¿experiencia con maquinaria?', p:'med' },
+        { text:'Preparar dossier de presentación de Hulvor', desc:'¿Quiénes son?, ¿qué venden?, ¿por qué Hulvor?, caso del primer cliente. PDF de máximo 6 páginas.', p:'med' },
+      ]},
+      { label:'Cierre y postventa', items:[
+        { text:'Diseñar checklist de entrega de máquina', desc:'Confirmar: máquina en buen estado, manuales entregados, capacitación dada, datos del responsable registrados.', p:'high' },
+        { text:'Crear protocolo de seguimiento postventa', desc:'Llamada a los 7 días (¿funciona?), 30 días (¿necesita algo?) y 6 meses (¿qué más necesita limpiar?).', p:'med' },
+        { text:'Definir política de garantía y servicio', desc:'¿Qué cubre la garantía y por cuánto tiempo? ¿Servicio técnico propio o con el fabricante? El cliente siempre pregunta.', p:'high' },
+      ]},
+    ]
+  },
+  {
+    id:'clientes', color:'#D85A30', title:'Clientes y prospectos',
+    subtitle:'1 cliente activo · Construir pipeline',
+    groups:[
+      { label:'Primer cliente', items:[
+        { text:'Documentar caso de éxito del cliente #1', desc:'Industria, problema que tenía, modelo que compró, resultado obtenido. Es tu primer testimonio comercial.', p:'high' },
+        { text:'Pedir reseña o referido al cliente #1', desc:'Con respeto: "¿Conoces alguien más que pueda necesitar algo así?" Una referencia caliente vale 10 llamadas en frío.', p:'high' },
+        { text:'Confirmar que factura y entrega quedaron perfectas', desc:'CFDI correcto, contrato firmado y máquina funcionando. El detalle en la primera venta construye la reputación.', p:'high' },
+      ]},
+      { label:'Construir pipeline', items:[
+        { text:'Crear CRM básico con los prospectos actuales', desc:'Tabla en Excel o Notion: empresa, contacto, industria, estatus, última interacción y próxima acción. Actualizar semanal.', p:'high' },
+        { text:'Identificar 3 industrias objetivo prioritarias', desc:'Logística/almacenes, manufactura ligera, plantas de alimentos. Donde más se usan fregadoras y barredoras.', p:'med' },
+        { text:'Hacer lista de 20 empresas objetivo en la región', desc:'Google Maps, LinkedIn, directorios de CAINTRA o Cámara de Comercio de Reynosa. Son tus primeros prospectos.', p:'med' },
+        { text:'Definir guión de contacto inicial', desc:'No más de 3 líneas: quién eres, qué vendes, por qué les llamas. Termina con una pregunta, no una afirmación.', p:'med' },
+      ]},
+    ]
+  },
+  {
+    id:'marketing', color:'#993556', title:'Marketing',
+    subtitle:'Presencia digital mínima viable',
+    groups:[
+      { label:'Presencia digital mínima', items:[
+        { text:'Comprar dominio hulvor.com o hulvor.mx', desc:'GoDaddy o NameCheap. El dominio es barato y da seriedad. Si alguien googlea "Hulvor" debe encontrarte.', p:'high' },
+        { text:'Crear página web — responsive (compu y celular)', desc:'Secciones: quiénes somos, qué vendemos, modelos con foto y precio referencia, formulario de contacto. Verificar que se vea bien en celular antes de publicar.', p:'high' },
+        { text:'Crear perfil de empresa en LinkedIn', desc:'Nombre, logo, descripción en 2 líneas, industria = Maquinaria industrial. Canal B2B más efectivo para tu mercado.', p:'high' },
+        { text:'Crear perfil en Google Business', desc:'Para aparecer en búsquedas locales de Reynosa. Agrega fotos de las máquinas. Es gratis y muy efectivo.', p:'med' },
+      ]},
+      { label:'Contenido y materiales', items:[
+        { text:'Sacar inspiración para publicidad', desc:'Buscar referencias de cómo anuncian competidores y marcas de maquinaria industrial (LinkedIn, Google, YouTube). Guardar capturas para definir el tono visual de Hulvor.', p:'med' },
+        { text:'Publicar caso del primer cliente en LinkedIn', desc:'Foto de la máquina instalada + texto de 3-4 líneas: qué problema resolviste, para qué industria.', p:'med' },
+        { text:'Diseñar tarjeta de presentación digital', desc:'Nombre, cargo, WhatsApp, correo y link al catálogo. Canva tiene plantillas gratuitas. Comparte como imagen o vCard.', p:'med' },
+        { text:'Crear firma de correo electrónico corporativa', desc:'Logo + nombre + cargo + teléfono + web. Cada correo que envíes es una impresión de marca.', p:'med' },
+        { text:'Configurar WhatsApp Business', desc:'Perfil de empresa, catálogo de productos, respuestas automáticas y etiquetas de conversación.', p:'low' },
+      ]},
+    ]
+  },
+  {
+    id:'ops', color:'#5F5E5A', title:'Operaciones',
+    subtitle:'Estructura interna · Finanzas básicas',
+    groups:[
+      { label:'Estructura interna', items:[
+        { text:'Definir roles y responsabilidades del equipo', desc:'¿Quién atiende prospectos? ¿Quién factura? ¿Quién coordina entregas? Aunque sean 2 personas, ponlo por escrito.', p:'high' },
+        { text:'Abrir Google Workspace o Microsoft 365', desc:'Correos con dominio propio (roberto@hulvor.mx), Drive compartido y calendario. Nada en correos personales.', p:'high' },
+        { text:'Crear carpeta compartida de documentos clave', desc:'Contratos, facturas, fichas técnicas, herramienta de precios, CRM. Todos con acceso. No perder nada en el celular.', p:'high' },
+        { text:'Definir canal único de comunicación interna', desc:'WhatsApp o Slack. Un grupo solo para temas de trabajo. Separar lo personal de lo profesional desde el inicio.', p:'med' },
+      ]},
+      { label:'Finanzas básicas', items:[
+        { text:'Hacer proyección de flujo de caja a 6 meses', desc:'Ingresos esperados vs gastos fijos (contador, plataformas, gasolina). ¿En qué mes cubres costos?', p:'high' },
+        { text:'Definir precio de punto de equilibrio', desc:'¿Cuántas máquinas debes vender al mes para cubrir todos los gastos? Esa es tu meta mínima de ventas.', p:'high' },
+        { text:'Separar gastos operativos vs inversión', desc:'No mezclar el gasto del día a día con lo que inviertes en crecer. Aunque sea en la misma cuenta, dos columnas.', p:'med' },
+        { text:'Establecer rutina mensual de revisión financiera', desc:'Último día del mes: ¿cuánto entró, cuánto salió, cuántas cotizaciones, cuántos cierres? 30 min que evitan sorpresas.', p:'low' },
+      ]},
+    ]
+  },
+];
+
+const LABELS = { high:'urgente', med:'pronto', low:'cuando puedas' };
+let state = {};
+let saveTimer = null;
+
+/* ── JSONBIN ── */
+function setSyncStatus(status, msg) {
+  document.getElementById('sync-dot').className = 'sync-dot ' + status;
+  document.getElementById('sync-lbl').textContent = msg;
+}
+
+async function loadFromBin() {
+  try {
+    setSyncStatus('saving', 'Cargando...');
+    const res = await fetch(BIN_URL + '/latest', { headers: { 'X-Master-Key': API_KEY } });
+    const data = await res.json();
+    state = data.record || {};
+    setSyncStatus('ok', 'Sincronizado');
+  } catch(e) {
+    state = {};
+    setSyncStatus('err', 'Sin conexión — modo local');
+    toast('Sin conexión. Los cambios no se guardarán en la nube.');
+  }
+  document.getElementById('overlay').style.display = 'none';
+  renderAll();
+  updateProgress();
+  syncUndoButtons();
+}
+
+async function saveToBin() {
+  try {
+    setSyncStatus('saving', 'Guardando...');
+    await fetch(BIN_URL, {
+      method: 'PUT',
+      headers: HEADERS,
+      body: JSON.stringify(state)
+    });
+    const now = new Date().toLocaleTimeString('es-MX', { hour:'2-digit', minute:'2-digit' });
+    setSyncStatus('ok', 'Guardado ' + now);
+  } catch(e) {
+    setSyncStatus('err', 'Error al guardar');
+    toast('Error al sincronizar con la nube');
+  }
+}
+
+function scheduleSave() {
+  clearTimeout(saveTimer);
+  setSyncStatus('saving', 'Guardando...');
+  saveTimer = setTimeout(saveToBin, 800);
+}
+
+/* ── UNDO / REDO ── */
+const MAX_H = 60;
+let hist = [{}];
+let hIdx = 0;
+
+function pushHist(s) {
+  hist = hist.slice(0, hIdx + 1);
+  hist.push(JSON.parse(JSON.stringify(s)));
+  if (hist.length > MAX_H) hist.shift();
+  hIdx = hist.length - 1;
+  syncUndoButtons();
+}
+
+function undo() {
+  if (hIdx <= 0) return;
+  hIdx--;
+  state = JSON.parse(JSON.stringify(hist[hIdx]));
+  renderAll(); updateProgress(); syncUndoButtons();
+  scheduleSave(); toast('Deshecho');
+}
+
+function redo() {
+  if (hIdx >= hist.length - 1) return;
+  hIdx++;
+  state = JSON.parse(JSON.stringify(hist[hIdx]));
+  renderAll(); updateProgress(); syncUndoButtons();
+  scheduleSave(); toast('Rehecho');
+}
+
+function syncUndoButtons() {
+  document.getElementById('btn-undo').disabled = hIdx <= 0;
+  document.getElementById('btn-redo').disabled = hIdx >= hist.length - 1;
+}
+
+/* ── HELPERS ── */
+function iId(sId, gi, ii) { return sId + '_' + gi + '_' + ii; }
+function nKey(sId, gi, ii) { return 'note_' + sId + '_' + gi + '_' + ii; }
+
+/* ── RENDER ── */
+function renderAll() {
+  SECTIONS.forEach(s => {
+    s.groups.forEach((g, gi) => {
+      g.items.forEach((_, ii) => {
+        const id = iId(s.id, gi, ii);
+        const el = document.getElementById('i_' + id);
+        if (el) { el.classList.toggle('done', !!state[id]); el.style.setProperty('--accent', s.color); }
+        const nId = nKey(s.id, gi, ii);
+        const ta = document.getElementById('ta_' + nId);
+        const nw = document.getElementById('nw_' + nId);
+        const nb = document.getElementById('nb_' + nId);
+        if (ta) {
+          const v = state[nId] || '';
+          ta.value = v;
+          nw.style.display = v ? 'block' : 'none';
+          nb.textContent = v ? '− nota' : '+ nota';
+        }
+      });
+    });
+  });
+}
+
+function toggleItem(id, el, color) {
+  state[id] = !state[id];
+  el.classList.toggle('done', state[id]);
+  el.style.setProperty('--accent', color);
+  pushHist(state);
+  updateProgress();
+  scheduleSave();
+}
+
+function updateProgress() {
+  let total = 0, done = 0;
+  SECTIONS.forEach(s => {
+    let st = 0, sd = 0;
+    s.groups.forEach((g, gi) => {
+      g.items.forEach((_, ii) => {
+        const id = iId(s.id, gi, ii);
+        st++; total++;
+        if (state[id]) { sd++; done++; }
+      });
+    });
+    const pct = st ? Math.round(sd / st * 100) : 0;
+    const mf = document.getElementById('mf_' + s.id);
+    const mc = document.getElementById('mc_' + s.id);
+    if (mf) mf.style.width = pct + '%';
+    if (mc) mc.textContent = sd + '/' + st;
+  });
+  const pct = total ? Math.round(done / total * 100) : 0;
+  document.getElementById('g-fill').style.width = pct + '%';
+  document.getElementById('g-num').textContent = pct + '%';
+  document.getElementById('g-sub').textContent = done + ' de ' + total + ' tareas';
+}
+
+/* ── TOOLBAR ── */
+function toggleSec(id) { document.getElementById('s_' + id).classList.toggle('collapsed'); }
+function expandAll()   { SECTIONS.forEach(s => document.getElementById('s_' + s.id).classList.remove('collapsed')); }
+function collapseAll() { SECTIONS.forEach(s => document.getElementById('s_' + s.id).classList.add('collapsed')); }
+function filterPending() { document.querySelectorAll('.item').forEach(el => { el.style.display = el.classList.contains('done') ? 'none' : ''; }); expandAll(); }
+function filterAll()     { document.querySelectorAll('.item').forEach(el => { el.style.display = ''; }); }
+
+async function resetAll() {
+  if (!confirm('¿Reiniciar TODO el checklist? Esto borra el progreso para todos los que tengan el archivo.')) return;
+  state = {};
+  hist = [{}]; hIdx = 0;
+  syncUndoButtons();
+  renderAll();
+  updateProgress();
+  await saveToBin();
+  toast('Checklist reiniciado');
+}
+
+/* ── NOTE ── */
+function toggleNote(nId) {
+  const nw = document.getElementById('nw_' + nId);
+  const nb = document.getElementById('nb_' + nId);
+  const ta = document.getElementById('ta_' + nId);
+  const open = nw.style.display === 'block';
+  nw.style.display = open ? 'none' : 'block';
+  nb.textContent = open ? '+ nota' : '− nota';
+  if (!open) ta.focus();
+}
+
+function saveNote(nId, val) {
+  state[nId] = val;
+  pushHist(state);
+  scheduleSave();
+}
+
+/* ── TOAST ── */
+let tTimer;
+function toast(msg) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.classList.add('show');
+  clearTimeout(tTimer);
+  tTimer = setTimeout(() => el.classList.remove('show'), 2200);
+}
+
+/* ── BUILD ── */
+function build() {
+  const main = document.getElementById('main');
+  SECTIONS.forEach(s => {
+    const sec = document.createElement('div');
+    sec.className = 'section'; sec.id = 's_' + s.id;
+    let total = 0; s.groups.forEach(g => total += g.items.length);
+    sec.innerHTML = `
+      <div class="section-header" onclick="toggleSec('${s.id}')">
+        <div class="sec-accent" style="background:${s.color}"></div>
+        <div class="sec-info">
+          <div class="sec-title">${s.title}</div>
+          <div class="sec-subtitle">${s.subtitle}</div>
+        </div>
+        <div class="sec-stats">
+          <span class="sec-count" id="mc_${s.id}">0/${total}</span>
+          <div class="mini-track"><div class="mini-fill" id="mf_${s.id}" style="background:${s.color}"></div></div>
+        </div>
+        <span class="chevron">&#8964;</span>
+      </div>
+      <div class="section-body" id="bd_${s.id}"></div>
+    `;
+    main.appendChild(sec);
+
+    const body = sec.querySelector('.section-body');
+    s.groups.forEach((g, gi) => {
+      const gl = document.createElement('div');
+      gl.className = 'group-label'; gl.textContent = g.label;
+      body.appendChild(gl);
+      g.items.forEach((it, ii) => {
+        const id = iId(s.id, gi, ii);
+        const nId = nKey(s.id, gi, ii);
+        const div = document.createElement('div');
+        div.className = 'item'; div.id = 'i_' + id;
+        div.style.setProperty('--accent', s.color);
+        div.innerHTML = `
+          <div class="check-wrap">
+            <svg width="10" height="8" viewBox="0 0 10 8" fill="none">
+              <path d="M1 3.5L3.5 6.5L9 1" stroke="white" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+          </div>
+          <div class="item-body">
+            <div class="item-text">${it.text}</div>
+            <div class="item-desc">${it.desc}</div>
+            <div class="item-note" id="nw_${nId}" style="display:none">
+              <textarea id="ta_${nId}" placeholder="Nota, responsable, enlace..."></textarea>
+            </div>
+            <button class="note-btn" id="nb_${nId}">+ nota</button>
+          </div>
+          <span class="badge ${it.p}">${LABELS[it.p]}</span>
+        `;
+        div.addEventListener('click', e => {
+          const nb = document.getElementById('nb_' + nId);
+          const nw = document.getElementById('nw_' + nId);
+          if (e.target === nb || nw.contains(e.target)) return;
+          toggleItem(id, div, s.color);
+        });
+        div.querySelector('.note-btn').addEventListener('click', e => {
+          e.stopPropagation(); toggleNote(nId);
+        });
+        div.querySelector('textarea').addEventListener('blur', e => {
+          saveNote(nId, e.target.value);
+        });
+        body.appendChild(div);
+      });
+    });
+  });
+}
+
+/* ── KEYBOARD ── */
+document.addEventListener('keydown', e => {
+  if (document.activeElement.tagName === 'TEXTAREA') return;
+  if ((e.ctrlKey || e.metaKey) && !e.shiftKey && e.key === 'z') { e.preventDefault(); undo(); }
+  if ((e.ctrlKey || e.metaKey) && (e.key === 'y' || (e.shiftKey && e.key === 'z'))) { e.preventDefault(); redo(); }
+});
+
+build();
+loadFromBin();
+</script>
+</body>
+</html>
