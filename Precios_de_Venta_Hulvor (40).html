@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Calculadora de Precios — IronBee</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #F4F2ED;
+    --surface: #FFFFFF;
+    --surface2: #ECEAE4;
+    --border: #D8D4CB;
+    --text: #1A1916;
+    --text2: #6B6860;
+    --text3: #9E9B93;
+    --accent: #1A1916;
+    --accent-light: #F0EDE6;
+    --blue: #1B3A6B;
+    --blue-light: #E6EDF8;
+    --amber: #7A4F1C;
+    --amber-light: #FDF0DC;
+    --green: #1A4A2E;
+    --green-light: #E4F2EA;
+    --red: #7A1C1C;
+    --red-light: #FDE8E8;
+    --mono: 'DM Mono', monospace;
+    --sans: 'DM Sans', sans-serif;
+    --radius: 10px;
+    --radius-sm: 6px;
+  }
+
+  body {
+    font-family: var(--sans);
+    background: var(--bg);
+    color: var(--text);
+    min-height: 100vh;
+    padding: 2rem;
+  }
+
+  header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-bottom: 2rem;
+    flex-wrap: wrap;
+    gap: 1rem;
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .brand-tag {
+    font-family: var(--mono);
+    font-size: 10px;
+    letter-spacing: 0.15em;
+    color: var(--text3);
+    text-transform: uppercase;
+  }
+
+  h1 {
+    font-size: 22px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+  }
+
+  /* ── CONTROLS ───────────────────────────────────────── */
+  .controls {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+    align-items: center;
+  }
+
+  .control-group {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .control-group label {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--mono);
+  }
+
+  .control-group input[type="number"] {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 500;
+    color: var(--text);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 7px 10px;
+    width: 110px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+
+  .control-group input:focus {
+    border-color: var(--accent);
+  }
+
+  /* Toggle IVA */
+  .toggle-wrap {
+    display: flex;
+    flex-direction: column;
+    gap: 4px;
+  }
+
+  .toggle-wrap label.top {
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    text-transform: uppercase;
+    letter-spacing: 0.08em;
+    font-family: var(--mono);
+  }
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    height: 36px;
+  }
+
+  .toggle {
+    position: relative;
+    width: 44px;
+    height: 24px;
+    flex-shrink: 0;
+  }
+
+  .toggle input { opacity: 0; width: 0; height: 0; }
+
+  .slider {
+    position: absolute;
+    inset: 0;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: 24px;
+    cursor: pointer;
+    transition: background 0.2s, border-color 0.2s;
+  }
+
+  .slider::before {
+    content: '';
+    position: absolute;
+    width: 16px; height: 16px;
+    left: 3px; top: 3px;
+    background: var(--text3);
+    border-radius: 50%;
+    transition: transform 0.2s, background 0.2s;
+  }
+
+  .toggle input:checked + .slider { background: var(--text); border-color: var(--text); }
+  .toggle input:checked + .slider::before { transform: translateX(20px); background: #fff; }
+
+  .toggle-label {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    color: var(--text2);
+    transition: color 0.2s;
+  }
+
+  .toggle-label.active { color: var(--text); }
+
+  /* ── METRICS ROW ────────────────────────────────────── */
+  .metrics {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(130px, 1fr));
+    gap: 10px;
+    margin-bottom: 1.5rem;
+  }
+
+  .metric {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+  }
+
+  .metric .m-label {
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--text3);
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--mono);
+    margin-bottom: 6px;
+  }
+
+  .metric .m-val {
+    font-size: 20px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    font-family: var(--mono);
+  }
+
+  .metric.blue { background: var(--blue-light); border-color: #C5D5EC; }
+  .metric.blue .m-val { color: var(--blue); }
+  .metric.green { background: var(--green-light); border-color: #BFD9CA; }
+  .metric.green .m-val { color: var(--green); }
+  .metric.amber { background: var(--amber-light); border-color: #EDD5AB; }
+  .metric.amber .m-val { color: var(--amber); }
+
+  /* ── TABLE ──────────────────────────────────────────── */
+  .table-wrap {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 13px;
+  }
+
+  thead th {
+    background: var(--accent);
+    color: #fff;
+    font-size: 10px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    font-family: var(--mono);
+    padding: 10px 12px;
+    text-align: left;
+    white-space: nowrap;
+  }
+
+  thead th:not(:first-child) { text-align: right; }
+
+  tbody tr { border-top: 1px solid var(--border); transition: background 0.1s; }
+  tbody tr:hover { background: var(--accent-light); }
+  tbody tr.special { background: var(--amber-light); }
+  tbody tr.special:hover { background: #F5E5C0; }
+
+  td { padding: 10px 12px; vertical-align: middle; }
+  td.name { font-weight: 500; }
+  td.sub { font-size: 11px; color: var(--text3); }
+  td.num {
+    text-align: right;
+    font-family: var(--mono);
+    font-size: 13px;
+    white-space: nowrap;
+  }
+
+  td input[type="number"] {
+    font-family: var(--mono);
+    font-size: 13px;
+    font-weight: 500;
+    background: var(--bg);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 5px 8px;
+    width: 80px;
+    text-align: right;
+    outline: none;
+    transition: border-color 0.15s, background 0.15s;
+    color: var(--text);
+  }
+
+  td input[type="number"]:focus {
+    border-color: var(--accent);
+    background: var(--surface);
+  }
+
+  /* Precio directo input — distinct blue tint */
+  td input[type="number"].precio-input {
+    background: var(--blue-light);
+    border-color: #C5D5EC;
+    color: var(--blue);
+  }
+  td input[type="number"].precio-input:focus {
+    border-color: var(--blue);
+    background: #dce8f5;
+  }
+  td input[type="number"].precio-input::placeholder {
+    color: #8aaad4;
+    font-style: italic;
+  }
+
+  .badge {
+    display: inline-block;
+    font-size: 10px;
+    font-family: var(--mono);
+    font-weight: 500;
+    padding: 2px 7px;
+    border-radius: 20px;
+    vertical-align: middle;
+    margin-left: 6px;
+  }
+
+  .badge-amber { background: var(--amber-light); color: var(--amber); border: 1px solid #EDD5AB; }
+  .badge-blue  { background: var(--blue-light);  color: var(--blue);  border: 1px solid #C5D5EC; }
+
+  /* Utilidad coloring */
+  .pos { color: var(--green); }
+  .neg { color: var(--red); }
+
+  /* ── TFOOT TOTALS ───────────────────────────────────── */
+  tfoot tr { background: var(--surface2); border-top: 2px solid var(--border); }
+  tfoot td { padding: 12px 12px; font-weight: 600; font-family: var(--mono); font-size: 13px; }
+  tfoot td.num { text-align: right; }
+  tfoot tr.grand { background: var(--blue); }
+  tfoot tr.grand td { color: #fff; font-size: 14px; }
+
+  /* ── RESUMEN ────────────────────────────────────────── */
+  .resumen {
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    overflow: hidden;
+    margin-bottom: 1.5rem;
+  }
+
+  .resumen-title {
+    background: var(--surface2);
+    padding: 10px 16px;
+    font-size: 11px;
+    font-weight: 500;
+    text-transform: uppercase;
+    letter-spacing: 0.1em;
+    color: var(--text2);
+    font-family: var(--mono);
+    border-bottom: 1px solid var(--border);
+  }
+
+  .resumen-body { padding: 0; }
+
+  .resumen-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    border-bottom: 1px solid var(--border);
+    font-size: 13px;
+  }
+
+  .resumen-row:last-child { border-bottom: none; }
+  .resumen-row .rl { color: var(--text2); }
+  .resumen-row .rv { font-family: var(--mono); font-weight: 500; }
+
+  .resumen-row.total-row {
+    background: var(--blue);
+    color: #fff;
+  }
+  .resumen-row.total-row .rl { color: rgba(255,255,255,0.8); }
+  .resumen-row.total-row .rv { color: #fff; font-size: 15px; }
+
+  .resumen-row.iva-row {
+    background: var(--amber-light);
+    font-style: italic;
+  }
+  .resumen-row.iva-row .rl { color: var(--amber); }
+  .resumen-row.iva-row .rv { color: var(--amber); }
+
+  /* IVA toggle visible */
+  .iva-section { display: none; }
+  .iva-section.visible { display: flex; }
+
+  /* ── NOTA ───────────────────────────────────────────── */
+  .nota {
+    font-size: 11px;
+    color: var(--text3);
+    font-family: var(--mono);
+    line-height: 1.7;
+    padding: 12px 16px;
+    background: var(--surface2);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+  }
+
+  .nota span { color: var(--amber); }
+
+  /* ── SAVE BADGE & RESET ─────────────────────────────── */
+  .save-bar {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 1rem;
+    justify-content: flex-end;
+  }
+  #saved-badge {
+    font-family: var(--mono);
+    font-size: 11px;
+    color: var(--green);
+    opacity: 0;
+    transition: opacity 0.4s;
+    font-weight: 500;
+  }
+  .tc-live-block {
+    background: var(--amber-light);
+    border: 1px solid #E8C87A;
+    border-radius: var(--radius-sm);
+    padding: 6px 12px;
+    min-width: 160px;
+  }
+  .tc-live-block label {
+    font-size: 10px !important;
+    font-weight: 600 !important;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--amber) !important;
+    margin-bottom: 2px;
+  }
+  .tc-live-val {
+    font-family: var(--mono);
+    font-size: 15px;
+    font-weight: 600;
+    color: var(--amber);
+  }
+  .tc-live-src {
+    font-size: 10px;
+    color: var(--text3);
+    margin-top: 1px;
+  }
+    font-family: var(--mono);
+    font-size: 11px;
+    font-weight: 500;
+    color: var(--text2);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 5px 12px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+  }
+  .cons-machine-title {
+    font-size: 13px;
+    font-weight: 700;
+    color: var(--text);
+    padding: 10px 0 6px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: 4px;
+    letter-spacing: .03em;
+    text-transform: uppercase;
+  }
+  .cons-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-bottom: 18px;
+    font-size: 13px;
+  }
+  .cons-table th {
+    text-align: left;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+    color: var(--text2);
+    padding: 5px 10px;
+    border-bottom: 1px solid var(--border);
+    background: var(--surface);
+  }
+  .cons-table th.num, .cons-table td.num { text-align: right; }
+  .cons-table td {
+    padding: 6px 10px;
+    border-bottom: 1px solid var(--border);
+    color: var(--text);
+  }
+  .cons-table tr:last-child td { border-bottom: none; }
+  .cons-table tr.cons-total td {
+    font-weight: 700;
+    background: var(--surface);
+    border-top: 2px solid var(--border);
+  }
+  .cons-none {
+    color: var(--text2);
+    font-style: italic;
+    padding: 6px 10px;
+    font-size: 13px;
+  }
+  .btn-undo, .btn-redo {
+    font-family: var(--mono);
+    font-size: 14px;
+    font-weight: 600;
+    color: var(--text2);
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-sm);
+    padding: 4px 10px;
+    cursor: pointer;
+    transition: background 0.15s, color 0.15s;
+  }
+  .btn-undo:hover:not(:disabled), .btn-redo:hover:not(:disabled) { background: var(--accent-light); color: var(--accent); border-color: var(--accent); }
+  .btn-undo:disabled, .btn-redo:disabled { opacity: 0.3; cursor: default; }
+
+  /* ── RESPONSIVE ─────────────────────────────────────── */
+  @media (max-width: 768px) {
+    body { padding: 1rem; }
+    table { min-width: 700px; }
+    .table-wrap { overflow-x: auto; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="brand">
+    <span class="brand-tag">IronBee Machinery · Importación China → México</span>
+    <h1>Calculadora de Precios de Venta</h1>
+  </div>
+  <div class="controls">
+    <div class="control-group">
+      <label>Tipo de cambio (MXN/USD)</label>
+      <input type="number" id="tc" value="17.30" step="0.01" min="1" oninput="calc()">
+    </div>
+    <div class="control-group tc-live-block" id="tc-live-block">
+      <label>TC referencia hoy</label>
+      <div class="tc-live-val" id="tc-live-val">—</div>
+      <canvas id="tc-chart" width="140" height="48" style="display:block;margin-top:4px;"></canvas>
+      <div class="tc-live-src" id="tc-live-src"></div>
+    </div>
+    <div class="control-group">
+      <label>Mult. base</label>
+      <input type="number" id="mult-base" value="3.5" step="0.1" min="1" oninput="applyBase()">
+    </div>
+    <div class="control-group">
+      <label>Costo venta %</label>
+      <input type="number" id="cv-pct" value="10" step="1" min="0" oninput="calc()">
+    </div>
+    <div class="toggle-wrap">
+      <label class="top">Incluir IVA 16%</label>
+      <div class="toggle-row">
+        <label class="toggle">
+          <input type="checkbox" id="iva-toggle" onchange="calc()">
+          <span class="slider"></span>
+        </label>
+        <span class="toggle-label" id="iva-label">No</span>
+      </div>
+    </div>
+  </div>
+</header>
+
+<div class="save-bar">
+  <span id="saved-badge">✓ Guardado</span>
+  <button class="btn-undo" id="btn-undo" onclick="undo()" disabled title="Deshacer">←</button>
+  <button class="btn-redo" id="btn-redo" onclick="redo()" disabled title="Rehacer">→</button>
+  <button class="btn-reset" onclick="resetState()">↺ Restaurar defaults</button>
+</div>
+<div class="metrics">
+  <div class="metric">
+    <div class="m-label">Mercancía EXW</div>
+    <div class="m-val" id="m-exw-usd">$5,880 USD</div>
+  </div>
+  <div class="metric amber">
+    <div class="m-label">Costo logístico (MXN)</div>
+    <div class="m-val" id="m-logistica">$155,873</div>
+  </div>
+  <div class="metric blue">
+    <div class="m-label">Total venta (MXN)</div>
+    <div class="m-val" id="m-venta">—</div>
+  </div>
+  <div class="metric green">
+    <div class="m-label">Utilidad bruta (MXN)</div>
+    <div class="m-val" id="m-utilidad">—</div>
+  </div>
+  <div class="metric">
+    <div class="m-label">Margen bruto</div>
+    <div class="m-val" id="m-margen">—</div>
+  </div>
+</div>
+
+<!-- TABLA PRINCIPAL -->
+<div class="table-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th>Modelo</th>
+        <th>Cant.</th>
+        <th>EXW USD</th>
+        <th>Mult.</th>
+        <th>Precio venta MXN</th>
+        <th>Precio directo MXN</th>
+        <th id="th-iva" style="display:none">+ IVA 16% MXN</th>
+        <th>Costo venta MXN</th>
+        <th>Costo EXW MXN</th>
+        <th>Costo importación MXN</th>
+        <th>Costo puesto MXN</th>
+        <th>Utilidad neta MXN</th>
+      </tr>
+    </thead>
+    <tbody id="tbody">
+      <!-- generado por JS -->
+    </tbody>
+    <tfoot>
+      <tr>
+        <td colspan="4">Subtotales</td>
+        <td class="num" id="f-vta">—</td>
+        <td class="num"></td>
+        <td class="num" id="f-iva" style="display:none">—</td>
+        <td class="num" id="f-cv">—</td>
+        <td class="num" id="f-costo">—</td>
+        <td class="num" id="f-impo">—</td>
+        <td class="num" id="f-puesto">—</td>
+        <td class="num" id="f-util">—</td>
+      </tr>
+      <tr class="grand">
+        <td colspan="4">TOTAL VENTA (MXN)</td>
+        <td class="num" id="f-total" colspan="7">—</td>
+      </tr>
+    </tfoot>
+  </table>
+</div>
+
+<!-- RESUMEN FINANCIERO -->
+<div class="resumen">
+  <div class="resumen-title">Resumen financiero del lote</div>
+  <div class="resumen-body">
+    <div class="resumen-row"><span class="rl">Venta bruta (MXN)</span><span class="rv" id="r-venta">—</span></div>
+    <div class="resumen-row iva-section" id="r-iva-row"><span class="rl">IVA cobrado 16% (MXN) — trasladado al cliente</span><span class="rv" id="r-iva">—</span></div>
+    <div class="resumen-row"><span class="rl">Costo mercancía EXW + consumibles (MXN)</span><span class="rv" id="r-exw">—</span></div>
+    <div class="resumen-row"><span class="rl">Arancel 10% (sobre EXW)</span><span class="rv" id="r-arancel">—</span></div>
+    <div class="resumen-row"><span class="rl">Seguro 1% (sobre EXW)</span><span class="rv" id="r-seguro">—</span></div>
+    <div class="resumen-row"><span class="rl">DTA 0.80% (sobre EXW)</span><span class="rv" id="r-dta">—</span></div>
+    <div class="resumen-row"><span class="rl">Transfer fee ($50 USD)</span><span class="rv" id="r-transfer">—</span></div>
+    <div class="resumen-row"><span class="rl">Transporte nacional China ($150 USD)</span><span class="rv" id="r-transporte-china">—</span></div>
+    <div class="resumen-row"><span class="rl">IVA importación 16% (sobre EXW + arancel + logística)</span><span class="rv" id="r-iva-impo">—</span></div>
+    <div class="resumen-row"><span class="rl">Logística fija (flete + maniobras)</span><span class="rv" id="r-log-fija">—</span></div>
+    <div class="resumen-row"><span class="rl">Total costos importación</span><span class="rv" id="r-log">—</span></div>
+    <div class="resumen-row"><span class="rl">Costos de venta (<span id="r-cvpct">10</span>%)</span><span class="rv" id="r-cv">—</span></div>
+    <div class="resumen-row total-row"><span class="rl">Utilidad bruta estimada</span><span class="rv" id="r-util">—</span></div>
+    <div class="resumen-row iva-section" id="r-iva-nota">
+      <span class="rl">Nota: IVA importación pagado en aduana (recuperable)</span>
+      <span class="rv" id="r-iva-rec">$20,275</span>
+    </div>
+  </div>
+
+  <div class="resumen-title" style="margin-top:1.5rem">Inversión inicial requerida</div>
+  <div class="resumen-body">
+    <div class="resumen-row"><span class="rl">Costo mercancía EXW (MXN)</span><span class="rv" id="i-exw">—</span></div>
+    <div class="resumen-row"><span class="rl">Consumibles (MXN)</span><span class="rv" id="i-cons">—</span></div>
+    <div class="resumen-row"><span class="rl">Arancel 10%</span><span class="rv" id="i-arancel">—</span></div>
+    <div class="resumen-row"><span class="rl">Seguro 1%</span><span class="rv" id="i-seguro">—</span></div>
+    <div class="resumen-row"><span class="rl">DTA 0.80%</span><span class="rv" id="i-dta">—</span></div>
+    <div class="resumen-row"><span class="rl">Transfer fee ($50 USD)</span><span class="rv" id="i-transfer">—</span></div>
+    <div class="resumen-row"><span class="rl">Transporte nacional China ($150 USD)</span><span class="rv" id="i-transporte">—</span></div>
+    <div class="resumen-row"><span class="rl">Logística fija (flete + maniobras)</span><span class="rv" id="i-logfija">—</span></div>
+    <div class="resumen-row" style="color:var(--amber);font-style:italic"><span class="rl">IVA importación 16% <em>(temporal — recuperable)</em></span><span class="rv" id="i-iva-impo">—</span></div>
+    <div class="resumen-row total-row"><span class="rl">Total inversión inicial</span><span class="rv" id="i-total">—</span></div>
+    <div class="resumen-row total-row" style="font-size:12px;opacity:.75"><span class="rl">Sin IVA temporal</span><span class="rv" id="i-total-sin-iva">—</span></div>
+  </div>
+</div>
+
+<div class="nota">
+  <span>★</span> Filas en amarillo = JX45 y JX60T con multiplicador ajustado por precio de mercado.<br>
+  Costo importación = Arancel 10% + Seguro 1% + DTA 0.80% + Transfer fee $50 USD + Transporte China $150 USD + IVA importación 16% + Logística fija $25,000 MXN.<br>
+  Utilidad bruta = Venta bruta − Costo EXW − Total costos importación − Costos de venta.
+</div>
+
+<!-- TABLA DE CONSUMIBLES -->
+<div class="resumen" id="seccion-consumibles">
+  <div class="resumen-title">Consumibles por máquina</div>
+  <div id="consumibles-body"></div>
+</div>
+
+<script>
+  const LOGISTICA_FIJA = 25000; // Flete + maniobras fijo MXN
+  const EXW_TOTAL_USD = 7280;
+
+  const ITEMS = [
+    { id: 'jx45a', modelo: 'JX45L (litio) u1',  desc: 'Restregadora · 1200×600×960 mm · 150 kg · 24V/50Ah · 2-3h',     qty: 1, ewx: 950,  mult: 3.8, special: true,  consumibles: [{ nombre: 'Brush', usd: 20, vida: '3-6 meses' }, { nombre: 'Rubber', usd: 18, vida: '3-6 meses' }, { nombre: 'Filter', usd: 7, vida: '3-6 meses' }, { nombre: 'Solenoid valve', usd: 7, vida: '3-6 meses' }] },
+    { id: 'jx45b', modelo: 'JX45L (litio) u2',  desc: 'Restregadora · 1200×600×960 mm · 150 kg · 24V/50Ah · 2-3h',     qty: 1, ewx: 950,  mult: 3.8, special: true,  consumibles: [{ nombre: 'Brush', usd: 20, vida: '3-6 meses' }, { nombre: 'Rubber', usd: 18, vida: '3-6 meses' }, { nombre: 'Filter', usd: 7, vida: '3-6 meses' }, { nombre: 'Solenoid valve', usd: 7, vida: '3-6 meses' }] },
+    { id: 'jx60t', modelo: 'JX60TL (litio)',     desc: 'Restregadora · 1300×650×1200 mm · 170 kg · 24V/100Ah · 3-3.5h', qty: 1, ewx: 1500, mult: 3.8, special: true,  consumibles: [{ nombre: 'Brush', usd: 24, vida: '3-6 meses' }, { nombre: 'Rubber', usd: 20, vida: '3-6 meses' }, { nombre: 'Filter', usd: 7, vida: '3-6 meses' }] },
+    { id: 'jb85t', modelo: 'JB85DL (litio)',     desc: 'Restregadora · 1500×850×1300 mm · 315 kg · 24V/100Ah · 3-3.5h', qty: 1, ewx: 2350, mult: 3.5, special: false, consumibles: [{ nombre: 'Brush', usd: 30, vida: '3-6 meses' }, { nombre: 'Rubber', usd: 25, vida: '3-6 meses' }, { nombre: 'Filter', usd: 15, vida: '3-6 meses' }] },
+    { id: 'js20',  modelo: 'JS20',               desc: 'Barredora · 1050×950×780 mm · 140 kg · 12V/100Ah (plomo) · 4-6h', qty: 1, ewx: 730,  mult: 3.5, special: false, consumibles: [{ nombre: 'Main brush', usd: 24, vida: '3-6 meses' }, { nombre: 'Side brush', usd: 7, vida: '3-6 meses' }] },
+    { id: 'cc35a', modelo: 'CC35',               desc: 'Lava alfombras · 1120×560×950 mm · 65 kg · Sin batería (cable)',  qty: 1, ewx: 750,  mult: 3.5, special: false, consumibles: [{ nombre: 'Brush', usd: 20, vida: '3-6 meses' }] },
+  ];
+
+  function fmt(n) {
+    return '$' + Math.round(n).toLocaleString('es-MX');
+  }
+
+  function pct(n) {
+    return n.toFixed(1) + '%';
+  }
+
+  function buildConsumiblesTable(TC) {
+    const container = document.getElementById('consumibles-body');
+    container.innerHTML = '';
+
+    let grandTotUSD = 0, grandTotCosto = 0, grandTotVenta = 0, grandTotUtil = 0;
+
+    ITEMS.forEach(item => {
+      const title = document.createElement('div');
+      title.className = 'cons-machine-title';
+      title.textContent = item.modelo;
+      container.appendChild(title);
+
+      if (item.consumibles.length === 0) {
+        const none = document.createElement('div');
+        none.className = 'cons-none';
+        none.textContent = 'Sin consumibles especificados';
+        container.appendChild(none);
+        return;
+      }
+
+      const totUSD   = item.consumibles.reduce((s, c) => s + c.usd, 0);
+      const totCosto = totUSD * TC;
+      const totVenta = totCosto * 3.5;
+      const totUtil  = totVenta - totCosto;
+
+      const rows = item.consumibles.map(c => {
+        const costoMXN = c.usd * TC;
+        const ventaMXN = costoMXN * 3.5;
+        const utilMXN  = ventaMXN - costoMXN;
+        return `<tr>
+          <td>${c.nombre}</td>
+          <td class="num">$${c.usd}</td>
+          <td class="num">${fmt(costoMXN)}</td>
+          <td class="num">${c.vida || '—'}</td>
+          <td class="num">${fmt(ventaMXN)}</td>
+          <td class="num pos">${fmt(utilMXN)}</td>
+        </tr>`;
+      }).join('');
+
+      const table = document.createElement('table');
+      table.className = 'cons-table';
+      table.innerHTML = `
+        <thead><tr>
+          <th>Consumible</th>
+          <th class="num">Costo USD</th>
+          <th class="num">Costo MXN</th>
+          <th class="num">Vida útil</th>
+          <th class="num">Precio venta MXN (3.5x)</th>
+          <th class="num">Utilidad MXN</th>
+        </tr></thead>
+        <tbody>${rows}</tbody>
+        <tfoot>
+          <tr class="cons-total">
+            <td>Total</td>
+            <td class="num">$${totUSD}</td>
+            <td class="num">${fmt(totCosto)}</td>
+            <td class="num">—</td>
+            <td class="num">${fmt(totVenta)}</td>
+            <td class="num">${fmt(totUtil)}</td>
+          </tr>
+        </tfoot>`;
+      grandTotUSD   += totUSD;
+      grandTotCosto += totCosto;
+      grandTotVenta += totVenta;
+      grandTotUtil  += totUtil;
+
+      container.appendChild(table);
+    });
+
+    // Grand total row
+    const grandDiv = document.createElement('div');
+    grandDiv.style.cssText = 'margin-top:8px;';
+    const grandTable = document.createElement('table');
+    grandTable.className = 'cons-table';
+    grandTable.innerHTML = `
+      <tfoot>
+        <tr class="cons-total" style="background:#2E2E2E;color:#fff;">
+          <td style="color:#aaa;font-size:11px;font-weight:600;text-transform:uppercase;letter-spacing:.05em;" colspan="6">TOTAL — Todos los consumibles (todas las máquinas)</td>
+        </tr>
+        <tr class="cons-total" style="background:#1A1916;color:#fff;">
+          <td style="color:#fff;font-weight:700;">Costo total consumibles</td>
+          <td class="num" style="color:#F5C842;font-weight:700;">$${grandTotUSD} USD</td>
+          <td class="num" style="color:#F5C842;font-weight:700;">${fmt(grandTotCosto)}</td>
+          <td class="num" style="color:#aaa;">—</td>
+          <td class="num" style="color:#aaa;">—</td>
+          <td class="num" style="color:#aaa;">—</td>
+        </tr>
+        <tr class="cons-total" style="background:#1A1916;color:#fff;">
+          <td style="color:#fff;font-weight:700;">Venta total consumibles (3.5x)</td>
+          <td class="num" style="color:#aaa;">—</td>
+          <td class="num" style="color:#aaa;">—</td>
+          <td class="num" style="color:#aaa;">—</td>
+          <td class="num" style="color:#90EE90;font-weight:700;">${fmt(grandTotVenta)}</td>
+          <td class="num" style="color:#90EE90;font-weight:700;">${fmt(grandTotUtil)}</td>
+        </tr>
+      </tfoot>`;
+    grandDiv.appendChild(grandTable);
+    container.appendChild(grandDiv);
+  }
+
+  // Build table rows once
+  const tbody = document.getElementById('tbody');
+  ITEMS.forEach(item => {
+    const tr = document.createElement('tr');
+    if (item.special) tr.classList.add('special');
+    tr.id = 'row-' + item.id;
+    tr.innerHTML = `
+      <td>
+        <span class="name">${item.modelo}</span>
+        ${item.special ? '<span class="badge badge-amber">★ precio+</span>' : ''}
+        <br><span class="sub">${item.desc}</span>
+      </td>
+      <td class="num">${item.qty}</td>
+      <td class="num">
+        <input type="number" id="ewx-${item.id}" value="${item.ewx}" step="1" min="0" oninput="calc()">
+      </td>
+      <td class="num">
+        <input type="number" id="mult-${item.id}" value="${item.mult}" step="0.1" min="0.1" oninput="onMultChange('${item.id}')">
+      </td>
+      <td class="num" id="vtamxn-${item.id}">—</td>
+      <td class="num">
+        <input type="number" id="precio-${item.id}" class="precio-input" step="100" min="0" placeholder="Capturar precio..." oninput="onPrecioChange('${item.id}')">
+      </td>
+      <td class="num iva-col" id="ivamxn-${item.id}" style="display:none">—</td>
+      <td class="num" id="cv-${item.id}">—</td>
+      <td class="num" id="exwmxn-${item.id}">—</td>
+      <td class="num" id="impo-${item.id}">—</td>
+      <td class="num" id="puesto-${item.id}">—</td>
+      <td class="num" id="util-${item.id}">—</td>
+    `;
+    tbody.appendChild(tr);
+  });
+
+  const LS_KEY = 'ironbee_calc_v1';
+
+  // ── HISTORIAL (deshacer/rehacer) ──────────────────────
+  const HISTORY = [];
+  let   histIdx = -1;
+  let   _skipHistory = false;
+
+  function captureState() {
+    const s = {
+      tc: document.getElementById('tc').value,
+      multBase: document.getElementById('mult-base').value,
+      cvPct: document.getElementById('cv-pct').value,
+      ivaOn: document.getElementById('iva-toggle').checked,
+      mults: {}, ewxs: {}, precios: {}
+    };
+    ITEMS.forEach(item => {
+      s.mults[item.id]   = document.getElementById('mult-'   + item.id).value;
+      s.ewxs[item.id]    = document.getElementById('ewx-'    + item.id).value;
+      s.precios[item.id] = document.getElementById('precio-' + item.id).value;
+    });
+    return s;
+  }
+
+  function pushHistory() {
+    if (_skipHistory) return;
+    // Remove any forward history beyond current position
+    HISTORY.splice(histIdx + 1);
+    HISTORY.push(captureState());
+    if (HISTORY.length > 50) HISTORY.shift();
+    histIdx = HISTORY.length - 1;
+    updateHistoryBtns();
+  }
+
+  function applyHistoryState(s) {
+    _skipHistory = true;
+    document.getElementById('tc').value           = s.tc;
+    document.getElementById('mult-base').value    = s.multBase;
+    document.getElementById('cv-pct').value       = s.cvPct;
+    document.getElementById('iva-toggle').checked = s.ivaOn;
+    ITEMS.forEach(item => {
+      const m = document.getElementById('mult-'   + item.id); if (m) m.value = s.mults[item.id]   ?? item.mult;
+      const e = document.getElementById('ewx-'    + item.id); if (e) e.value = s.ewxs[item.id]    ?? item.ewx;
+      const p = document.getElementById('precio-' + item.id); if (p) p.value = s.precios[item.id] ?? '';
+    });
+    _skipHistory = false;
+    calc(true);
+  }
+
+  function undo() {
+    if (histIdx <= 0) return;
+    histIdx--;
+    applyHistoryState(HISTORY[histIdx]);
+    updateHistoryBtns();
+  }
+
+  function redo() {
+    if (histIdx >= HISTORY.length - 1) return;
+    histIdx++;
+    applyHistoryState(HISTORY[histIdx]);
+    updateHistoryBtns();
+  }
+
+  function updateHistoryBtns() {
+    document.getElementById('btn-undo').disabled = histIdx <= 0;
+    document.getElementById('btn-redo').disabled = histIdx >= HISTORY.length - 1;
+  }
+
+  function saveState() {
+    const state = {
+      tc:       document.getElementById('tc').value,
+      multBase: document.getElementById('mult-base').value,
+      cvPct:    document.getElementById('cv-pct').value,
+      ivaOn:    document.getElementById('iva-toggle').checked,
+      mults:    {},
+      ewxs:     {},
+      precios:  {}
+    };
+    ITEMS.forEach(item => {
+      state.mults[item.id]   = document.getElementById('mult-'   + item.id).value;
+      state.ewxs[item.id]    = document.getElementById('ewx-'    + item.id).value;
+      state.precios[item.id] = document.getElementById('precio-' + item.id).value;
+    });
+    localStorage.setItem(LS_KEY, JSON.stringify(state));
+    showSavedBadge();
+  }
+
+  function loadState() {
+    try {
+      const raw = localStorage.getItem(LS_KEY);
+      if (!raw) return;
+      const state = JSON.parse(raw);
+      if (state.tc)       document.getElementById('tc').value = state.tc;
+      if (state.multBase) document.getElementById('mult-base').value = state.multBase;
+      if (state.cvPct)    document.getElementById('cv-pct').value = state.cvPct;
+      if (state.ivaOn !== undefined) document.getElementById('iva-toggle').checked = state.ivaOn;
+      if (state.mults) {
+        ITEMS.forEach(item => {
+          if (state.mults[item.id] !== undefined) {
+            const el = document.getElementById('mult-' + item.id);
+            if (el) el.value = state.mults[item.id];
+          }
+          if (state.ewxs && state.ewxs[item.id] !== undefined) {
+            const el = document.getElementById('ewx-' + item.id);
+            if (el) el.value = state.ewxs[item.id];
+          }
+          if (state.precios && state.precios[item.id] !== undefined) {
+            const el = document.getElementById('precio-' + item.id);
+            if (el) el.value = state.precios[item.id];
+          }
+        });
+      }
+    } catch(e) {}
+  }
+
+  function showSavedBadge() {
+    const badge = document.getElementById('saved-badge');
+    badge.textContent = '✓ Guardado';
+    badge.style.opacity = '1';
+    clearTimeout(badge._t);
+    badge._t = setTimeout(() => { badge.style.opacity = '0'; }, 2000);
+  }
+
+  function resetState() {
+    if (!confirm('¿Restaurar valores por defecto?')) return;
+    localStorage.removeItem(LS_KEY);
+    document.getElementById('tc').value = '17.30';
+    document.getElementById('mult-base').value = '3.5';
+    document.getElementById('cv-pct').value = '10';
+    document.getElementById('iva-toggle').checked = false;
+    ITEMS.forEach(item => {
+      const multEl = document.getElementById('mult-' + item.id);
+      if (multEl) multEl.value = item.mult;
+      const ewxEl = document.getElementById('ewx-' + item.id);
+      if (ewxEl) ewxEl.value = item.ewx;
+      const precioEl = document.getElementById('precio-' + item.id);
+      if (precioEl) precioEl.value = '';
+    });
+    calc();
+  }
+
+  function applyBase() {
+    const base = parseFloat(document.getElementById('mult-base').value) || 3.5;
+    ITEMS.forEach(item => {
+      if (!item.special) {
+        document.getElementById('mult-' + item.id).value = base;
+      }
+    });
+    calc();
+  }
+
+  function onMultChange(id) {
+    // Clear direct price so mult takes precedence
+    document.getElementById('precio-' + id).value = '';
+    calc();
+  }
+
+  function onPrecioChange(id) {
+    const TC     = parseFloat(document.getElementById('tc').value) || 17.30;
+    const ewx    = parseFloat(document.getElementById('ewx-' + id).value) || 0;
+    const precioMXN = parseFloat(document.getElementById('precio-' + id).value);
+    if (!isNaN(precioMXN) && ewx > 0 && TC > 0) {
+      const precioUSD = precioMXN / TC;
+      const newMult   = precioUSD / ewx;
+      document.getElementById('mult-' + id).value = newMult.toFixed(2);
+    }
+    calc();
+  }
+
+  function calc(fromHistory = false) {
+    const TC      = parseFloat(document.getElementById('tc').value) || 17.30;
+    const cvPct   = parseFloat(document.getElementById('cv-pct').value) / 100 || 0.10;
+    const ivaOn   = document.getElementById('iva-toggle').checked;
+    saveState();
+    if (!fromHistory) pushHistory();
+
+    document.getElementById('iva-label').textContent = ivaOn ? 'Sí' : 'No';
+    document.getElementById('iva-label').classList.toggle('active', ivaOn);
+    buildConsumiblesTable(TC);
+
+    // Show/hide IVA column
+    const ivaCols = document.querySelectorAll('.iva-col');
+    const thIva   = document.getElementById('th-iva');
+    const fIva    = document.getElementById('f-iva');
+    ivaCols.forEach(el => el.style.display = ivaOn ? '' : 'none');
+    thIva.style.display = ivaOn ? '' : 'none';
+    fIva.style.display  = ivaOn ? '' : 'none';
+
+    const ivaRows = document.querySelectorAll('.iva-section');
+    ivaRows.forEach(el => el.classList.toggle('visible', ivaOn));
+
+    document.getElementById('r-cvpct').textContent = (cvPct * 100).toFixed(0);
+
+    let totVta = 0, totIva = 0, totCV = 0, totEXW = 0, totEXWusd = 0;
+
+    ITEMS.forEach(item => {
+      const ewx    = parseFloat(document.getElementById('ewx-' + item.id).value) || 0;
+      const precioEl = document.getElementById('precio-' + item.id);
+      const precioMXN = parseFloat(precioEl.value);
+      if (!isNaN(precioMXN) && ewx > 0 && TC > 0) {
+        const newMult = (precioMXN / TC) / ewx;
+        document.getElementById('mult-' + item.id).value = newMult.toFixed(2);
+      }
+      const mult   = parseFloat(document.getElementById('mult-' + item.id).value) || 3.5;
+      const vtaMXN = (!isNaN(precioMXN) && precioMXN > 0) ? precioMXN : (ewx * mult * item.qty * TC);
+      const ivaMXN = ivaOn ? vtaMXN * 0.16 : 0;
+      const cv     = vtaMXN * cvPct;
+      const consUSD  = item.consumibles.reduce((s, c) => s + c.usd, 0);
+      const consMXN  = consUSD * TC;
+      const exwMXN   = ewx * item.qty * TC;
+      const exwTotal = exwMXN + consMXN; // EXW + consumibles = base para importación
+
+      document.getElementById('vtamxn-' + item.id).textContent  = fmt(vtaMXN);
+      document.getElementById('ivamxn-' + item.id).textContent  = ivaOn ? fmt(ivaMXN) : '—';
+      document.getElementById('cv-'     + item.id).textContent  = fmt(cv);
+      document.getElementById('exwmxn-' + item.id).textContent  = fmt(exwMXN);
+
+      // Store for second pass
+      item._vtaMXN   = vtaMXN;
+      item._cv       = cv;
+      item._exwMXN   = exwMXN;
+      item._exwTotal = exwTotal;
+      item._consMXN  = consMXN;
+      item._consUSD  = consUSD;
+
+      totVta    += vtaMXN;
+      totIva    += ivaMXN;
+      totCV     += cv;
+      totEXW    += exwTotal; // base de importación incluye consumibles
+      totEXWusd += ewx * item.qty;
+    });
+
+    document.getElementById('m-exw-usd').textContent = '$' + Math.round(totEXWusd).toLocaleString('es-MX') + ' USD';
+
+    const arancel         = totEXW * 0.10;
+    const seguro          = totEXW * 0.01;
+    const dta             = totEXW * 0.0080;
+    const transferFee     = 50 * TC;
+    const transporteChina = 150 * TC;
+    const ivaImpo         = (totEXW + arancel + LOGISTICA_FIJA) * 0.16;
+    const LOGISTICA       = arancel + seguro + dta + transferFee + transporteChina + ivaImpo + LOGISTICA_FIJA;
+
+    // Second pass: proportional import cost per row (base = EXW + consumibles)
+    let totImpo = 0, totUtil = 0, totPuesto = 0, totCons = 0, totVcons = 0;
+    ITEMS.forEach(item => {
+      const impo   = totEXW > 0 ? (item._exwTotal / totEXW) * LOGISTICA : 0;
+      const puesto = item._exwTotal + impo;
+      const vcons  = item._consMXN * 3.5;
+      const util   = item._vtaMXN - puesto - item._cv;
+
+      document.getElementById('impo-'   + item.id).textContent = fmt(impo);
+      document.getElementById('puesto-' + item.id).textContent = fmt(puesto);
+      const utilEl = document.getElementById('util-' + item.id);
+      utilEl.textContent = fmt(util);
+      utilEl.className = 'num ' + (util >= 0 ? 'pos' : 'neg');
+
+      totImpo   += impo;
+      totPuesto += puesto;
+      totCons   += item._consUSD;
+      totVcons  += vcons;
+      totUtil   += util;
+    });
+
+    const utilNeta = totVta - totEXW - LOGISTICA - totCV;
+    const margen   = totVta > 0 ? (utilNeta / totVta * 100) : 0;
+    const totalConIva = ivaOn ? totVta + totIva : totVta;
+
+    // Footer
+    document.getElementById('f-vta').textContent    = fmt(totVta);
+    document.getElementById('f-iva').textContent    = ivaOn ? fmt(totIva) : '—';
+    document.getElementById('f-cv').textContent     = fmt(totCV);
+    document.getElementById('f-costo').textContent  = fmt(totEXW);
+    document.getElementById('f-impo').textContent   = fmt(totImpo);
+    document.getElementById('f-puesto').textContent = fmt(totPuesto);
+    document.getElementById('f-util').textContent   = fmt(utilNeta);
+    document.getElementById('f-total').textContent  = fmt(ivaOn ? totalConIva : totVta);
+
+    // Metrics
+    document.getElementById('m-logistica').textContent = fmt(LOGISTICA);
+    document.getElementById('m-venta').textContent     = fmt(ivaOn ? totalConIva : totVta);
+    document.getElementById('m-utilidad').textContent  = fmt(utilNeta);
+    document.getElementById('m-margen').textContent    = pct(margen);
+
+    // Resumen
+    document.getElementById('r-venta').textContent    = fmt(totVta);
+    document.getElementById('r-iva').textContent      = fmt(totIva);
+    document.getElementById('r-exw').textContent      = fmt(totEXW);
+    document.getElementById('r-arancel').textContent  = fmt(arancel);
+    document.getElementById('r-seguro').textContent   = fmt(seguro);
+    document.getElementById('r-dta').textContent      = fmt(dta);
+    document.getElementById('r-transfer').textContent          = fmt(transferFee);
+    document.getElementById('r-transporte-china').textContent  = fmt(transporteChina);
+    document.getElementById('r-iva-impo').textContent = fmt(ivaImpo);
+    document.getElementById('r-log-fija').textContent = fmt(LOGISTICA_FIJA);
+    document.getElementById('r-log').textContent      = fmt(LOGISTICA);
+    document.getElementById('r-cv').textContent       = fmt(totCV);
+    document.getElementById('r-util').textContent     = fmt(utilNeta);
+    document.getElementById('r-iva-rec').textContent  = fmt(ivaImpo);
+
+    // Inversión inicial
+    const totConsMXN = ITEMS.reduce((s, item) => s + item._consMXN, 0);
+    const totEXWonly = totEXW - totConsMXN;
+    const invSinIva  = totEXW + arancel + seguro + dta + transferFee + transporteChina + LOGISTICA_FIJA;
+    const invTotal   = invSinIva + ivaImpo;
+    document.getElementById('i-exw').textContent        = fmt(totEXWonly);
+    document.getElementById('i-cons').textContent       = fmt(totConsMXN);
+    document.getElementById('i-arancel').textContent    = fmt(arancel);
+    document.getElementById('i-seguro').textContent     = fmt(seguro);
+    document.getElementById('i-dta').textContent        = fmt(dta);
+    document.getElementById('i-transfer').textContent   = fmt(transferFee);
+    document.getElementById('i-transporte').textContent = fmt(transporteChina);
+    document.getElementById('i-logfija').textContent    = fmt(LOGISTICA_FIJA);
+    document.getElementById('i-iva-impo').textContent   = fmt(ivaImpo);
+    document.getElementById('i-total').textContent      = fmt(invTotal);
+    document.getElementById('i-total-sin-iva').textContent = fmt(invSinIva);
+  }
+
+  loadState();
+  HISTORY.length = 0;
+  histIdx = -1;
+  calc();
+
+  // Fetch TC spot USD/MXN con gráfica de velas — informativo, no modifica cálculos
+  async function fetchLiveTC() {
+    try {
+      // Fetch últimos 7 días de datos históricos
+      const dates = [];
+      const d = new Date();
+      for (let i = 6; i >= 0; i--) {
+        const dd = new Date(d);
+        dd.setDate(d.getDate() - i);
+        dates.push(dd.toISOString().split('T')[0]);
+      }
+
+      const results = await Promise.all(dates.map(date =>
+        fetch(`https://cdn.jsdelivr.net/npm/@fawazahmed0/currency-api@${date}/v1/currencies/usd.json`)
+          .then(r => r.json())
+          .then(data => ({ date, rate: data?.usd?.mxn }))
+          .catch(() => null)
+      ));
+
+      const valid = results.filter(r => r && r.rate);
+      if (valid.length === 0) throw new Error('no data');
+
+      const latest = valid[valid.length - 1].rate;
+      document.getElementById('tc-live-val').textContent = '$' + latest.toFixed(4) + ' MXN';
+      const now = new Date().toLocaleTimeString('es-MX', {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      document.getElementById('tc-live-src').textContent = 'Ref. mercado · ' + now;
+
+      // Dibujar velas
+      drawCandles(valid);
+
+    } catch {
+      document.getElementById('tc-live-val').textContent = 'No disponible';
+      document.getElementById('tc-live-src').textContent = 'Sin conexión';
+    }
+  }
+
+  function drawCandles(data) {
+    const canvas = document.getElementById('tc-chart');
+    if (!canvas) return;
+    const ctx = canvas.getContext('2d');
+    const W = canvas.width, H = canvas.height;
+    ctx.clearRect(0, 0, W, H);
+
+    if (data.length < 2) return;
+
+    // Construir velas: open=prev cierre, close=actual
+    const candles = [];
+    for (let i = 1; i < data.length; i++) {
+      const open  = data[i-1].rate;
+      const close = data[i].rate;
+      const high  = Math.max(open, close) * (1 + Math.random() * 0.002); // mecha estimada
+      const low   = Math.min(open, close) * (1 - Math.random() * 0.002);
+      candles.push({ open, close, high, low });
+    }
+
+    const allVals = candles.flatMap(c => [c.high, c.low]);
+    const minV = Math.min(...allVals);
+    const maxV = Math.max(...allVals);
+    const range = maxV - minV || 0.01;
+    const pad = 4;
+
+    const toY = v => pad + (1 - (v - minV) / range) * (H - pad * 2);
+
+    const cw = Math.floor((W - pad * 2) / candles.length);
+    const bodyW = Math.max(2, cw - 3);
+
+    candles.forEach((c, i) => {
+      const x = pad + i * cw + (cw - bodyW) / 2;
+      const bull = c.close >= c.open;
+      const color = bull ? '#2D9E5F' : '#C0392B';
+
+      ctx.strokeStyle = color;
+      ctx.lineWidth = 1;
+
+      // Mecha
+      const midX = x + bodyW / 2;
+      ctx.beginPath();
+      ctx.moveTo(midX, toY(c.high));
+      ctx.lineTo(midX, toY(c.low));
+      ctx.stroke();
+
+      // Cuerpo
+      const y1 = toY(Math.max(c.open, c.close));
+      const y2 = toY(Math.min(c.open, c.close));
+      const bodyH = Math.max(1, y2 - y1);
+      ctx.fillStyle = bull ? '#2D9E5F' : '#C0392B';
+      ctx.fillRect(x, y1, bodyW, bodyH);
+    });
+
+    // Línea base
+    ctx.strokeStyle = 'rgba(0,0,0,0.08)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(0, H - 1);
+    ctx.lineTo(W, H - 1);
+    ctx.stroke();
+  }
+
+  fetchLiveTC();
+  setInterval(fetchLiveTC, 30000); // This will push the initial state via pushHistory
+</script>
+</body>
+</html>
